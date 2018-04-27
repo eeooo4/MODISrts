@@ -21,32 +21,34 @@ listfiles <- list.files(pattern='.tif$')
 listfiles
 r<-NULL
 evistack<-NULL
-years<-2001:2017
 for(i in listfiles){
  r<-raster(i)/10000
  evistack<-stack(r, evistack)
 }
-names(evistack)<-paste0(rep("EVI",17), 2017:2001)
-levelplot(evistack, pretty=T)
-EVIdiff<-EVI2010-EVI2001
-EVIdiff[EVIdiff == 0] <- NA
-EVIdiff<-scale(EVIdiff)
-plot(EVIdiff, col = rainbow(n=1000, v=1, start=2.5/6, end=4/6))
-library(rgdal)
+names(evistack)<-paste0(rep("EVI",17),"April,", 2017:2001)
+diffstack<-evistack-evistack[[17]]
+library(rasterVis)library(rgdal)
 oregon<-readOGR(dsn="/Users/Maxwell/Documents/geospatial/orcnty2015/", layer = "orcntyline")
 plot(oregon)
 crs(oregon)
-orutm<-spTransform(oregon, crs(EVI2001))
-orutm<-crop(orutm, extent(EVI2001))
-orEVI<-mask(EVI2001, orutm)
-plot(orEVI)
+orutm<-spTransform(oregon, crs(evistack))
 plot(orutm)
-plot(EVIdiff)
+orutm<-crop(orutm, extent(evistack))
+#orEVI<-mask(EVI2001, orutm)
+plot(orutm)
+plot(diffstack)
 plot(orutm, add=T)
 
-evistack<-stack(EVI2001/10000, EVI2002/10000, EVI2010/10000)
 library(rasterVis)
-levelplot(evistack)
-EVI2001[EVI2001 == 0] <- NA
-mask(EVI2001, )
-levelplot(evistack, pretty=T)
+myTheme=rasterTheme(region=brewer.pal('Greens', n=9))
+cols <- rasterTheme(region=brewer.pal(n=9,"YlGn"))
+levelplot(scale(diffstack[[16]]), pretty=T, par.settings=cols)
+
+colortest<-diffstack[[1]]
+colortest[colortest<0.05&colortest>-0.05]<-NA
+plot(colortest)
+levelplot(diffstack[[1]], pretty=T)
+plot(diffstack)
+
+library(animation)
+saveGIF(animate(evistack), movie.name="EVI.gif")
