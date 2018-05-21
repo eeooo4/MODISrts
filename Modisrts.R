@@ -1,6 +1,6 @@
 setwd("/Users/Maxwell/Documents/MRT/")
 library(rts)
-#need to set nasa authorization (username and password), but only need to do once with the function below
+#need to set nasa authorization (username and password), but only need to do once with the function below: setNASAauth()
 #setNASAauth()
 modisProducts() #check out possible products (Beware, the version of Modis matters for extracting with ModisDownload later)
 setMRTpath("/Users/Maxwell/MRT/bin/", update=T) #set the path of the modis reprojection tool for the functions to find
@@ -23,23 +23,25 @@ dateseq
         #####proj_params Something weird, look up in the package to get a better idea of what to do here.
           ######utm_zone only needed if using UTM
             ######Datum: projection, pixel size: set what you what, mosaic: default is FALSE, need to set to true to mosaic. If you want there is a separate funciton to do it manually. Same                with proj, which reprojects the mosaicked file to a tif. Versopm: important, seems like 006 has everything I wanted, 005 didnt have much.
+#download all modis files in the date range to your working directory (set above)
 for(i in dateseq){
-ModisDownload("MOD13Q1",h=c(8, 9),v=c(4,4),dates=c(i),bands_subset="0 1 0 0 0 0 0 0 0 0 0", proj_type="UTM",proj_params="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0",utm_zone=c(10,11),datum="WGS84",pixel_size=250, mosaic = T, proj=T, version='006')
+ModisDownload("MOD13A3",h=c(8, 9),v=c(4,4),dates=c(i),bands_subset="0 1 0 0 0 0 0 0 0 0 0", proj_type="UTM",proj_params="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0",utm_zone=c(10,11),datum="WGS84",pixel_size=250, mosaic = T, proj=T, version='006')
 }
 
-#Cascade Swath, just a different code using UL and LR to specifiy upper left and lower right bounds in the reprojected coordinate system for the final product. Can act weird...
-ModisDownload("MOD13Q1",h=c(8, 9),v=c(4,4),dates=c('2001.05.01','2001.05.31'),bands_subset="0 1 0 0 0 0 0 0 0 0 0", proj_type="UTM",proj_params="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0",utm_zone=c(10,11),datum="WGS84",pixel_size=250, mosaic = T, proj=T, version='006')
+#Cascade range only, just a different code using UL and LR to specifiy upper left and lower right bounds in the reprojected coordinate system for the final product.
 
-ModisDownload("MOD13Q1",h=c(8, 9),v=c(4,4),dates=c('2017.05.01','2017.05.31'),bands_subset="0 1 0 0 0 0 0 0 0 0 0", proj_type="UTM",proj_params="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0",utm_zone=c(10,11),datum="WGS84",pixel_size=1000, mosaic = T, proj=T, UL =c(-130446, 5150545), LR=c(-200000, 4649751), version='006')
+#ModisDownload("MOD13Q1",h=c(8, 9),v=c(4,4),dates=c('2017.05.01','2017.05.31'),bands_subset="0 1 0 0 0 0 0 0 0 0 0", proj_type="UTM",proj_params="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0",utm_zone=c(10,11),datum="WGS84",pixel_size=1000, mosaic = T, proj=T, UL =c(-130446, 5150545), LR=c(-200000, 4649751), version='006')
 
 
 library(raster)
 library(rgeos)
+library(rgdal)
 #Show files of some pattern in WD
-listfiles <- list.files(pattern='05-01')
+listfiles <- list.files(pattern='05-01') # in wd
 listfiles
-listfiles<-listfiles[1:18]
+listfiles<-listfiles[1:17] #or whatever ones are .tif
 listfiles
+plot(raster(listfiles[1]))
 #Downloaded this separately to crop by
 oregon<-readOGR(dsn="/Users/Maxwell/Documents/geospatial/orcnty2015/", layer = "orcntypoly")
 orutm<-spTransform(oregon, crs(raster(listfiles[1])))
@@ -49,16 +51,17 @@ r<-NULL
 evimay<-NULL
 for(i in listfiles){
  r<-raster(i)/10000 #divide by 10000 to get into correct units.
+ extent(r)<-extent(orutm)
  r<-crop(r, orutm)
  r<-mask(r, orutm)
  evimay<-stack(r, evimay)
 }
-#changes names to useful ones
-names(evimay)<-paste0(rep("EVI",18),"May", 2017:2000)
-cellStats(evimay[[1]]<(-0.2), stat='sum')
-evimay[evimay<(-0.2)]<-NA
-plot(evimay)
-diffstackOR<-eviOR-eviOR[[19]]
+
+names(evimay)<-paste0(rep("EVI",17),"May", 2017:2001) #changes names to useful ones
+cellStats(evimay[[1]]==(-0.3), stat='sum') # water is -0.3
+evimay[evimay==(-0.3)]<-NA #Make water transparent
+plot(evimay)# check it out!
+diffstackOR<-eviOR-eviOR[[17]] #make a new stack for differences between each one and the first year
 par(mfrow=c(2,1))
 plot(evimay[[1]], colNA="lightblue", main = "EVI March, 2018")
 plot(orutm, add=T)
@@ -89,7 +92,7 @@ as.data.frame(s)
 as.data.frame(stest)
 #first cell
 stest[1]
-#calculate the slope through that cell manually
+#calculate the slope through that cell manually for proof of concept
 y<-as.vector(as.data.frame(s[1,1]))
 y<-as.numeric(y)
 class(y)
@@ -162,3 +165,5 @@ writeRaster(evislopeadj, "evislopeadj.tif")
 par(mfrow=c(2,1)
 plot(evislopeadj)
 plot(evislopeadjmay)
+
+test
