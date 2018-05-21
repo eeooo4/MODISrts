@@ -61,23 +61,24 @@ names(evimay)<-paste0(rep("EVI",17),"May", 2017:2001) #changes names to useful o
 cellStats(evimay[[1]]==(-0.3), stat='sum') # water is -0.3
 evimay[evimay==(-0.3)]<-NA #Make water transparent
 plot(evimay)# check it out!
-diffstackOR<-eviOR-eviOR[[17]] #make a new stack for differences between each one and the first year
+diffstackmay<-evimay-evimay[[17]] #make a new stack for differences between each one and the first year
 par(mfrow=c(2,1))
 plot(evimay[[1]], colNA="lightblue", main = "EVI March, 2018")
 plot(orutm, add=T)
-plot(diffstackOR[[1]], colNA="lightblue", main = "EVI March, 2018-March 2000")
+plot(diffstackmay[[1]], colNA="lightblue", main = "EVI March, 2018-March 2000")
 plot(orutm, add=T)
 library(rasterVis)
 library(rgdal)
 library(sp)
+#plot color themes
 cols=rasterTheme(region=brewer.pal('Greens', n=9))
 cols2=rasterTheme(region=brewer.pal(n=11,"BrBG"))
-levelplot(scale(diffstackOR[[1]]), pretty=T, par.settings=cols2)
-levelplot(scale(eviOR[[1]]), pretty=T, par.settings=cols2)
-levelplot(eviOR, pretty=T, par.settings = cols2)
+levelplot(scale(diffstackmay[[1]]), pretty=T, par.settings=cols2)
+levelplot(scale(evimay[[1]]), pretty=T, par.settings=cols2)
+levelplot(evimay, pretty=T, par.settings = cols2)
 
 
-#Find coefficients between rasterstack raster cells over time
+#Find coefficients and stats between rasterstack raster cells over time
 lm_fun = function(x) { if (is.na(x[1])){ NA } else { m = lm(x ~ time); summary(m)$coefficients[2] }} # slope
 lm_fun_int = function(x) { if (is.na(x[1])){ NA } else { m = lm(x ~ time); summary(m)$coefficients[1] }} #intercept
 lm_fun_p = function(x) { if (is.na(x[1])){ NA } else { m = lm(x ~ time); summary(m)$coefficients[8] }} #R2
@@ -103,19 +104,7 @@ summary(lm(y~x))$coefficients[2]
 #actual data calculation
 time<-18:1
 
-#March
-eviintercept= calc(eviOR, lm_fun_int)
-evip= calc(eviOR, lm_fun_p)
-evip.sig<-evip
-evip.sig<-evip.sig[evip.sig>0.05]<-NA
-plot(evip.sig)
-
-evislope= calc(eviOR, lm_fun)
-evislopeadj<-evislope
-evislopeadj[evislopeadj>0.1]<-NA
-levelplot(evislopeadj, par.settings=cols2)
-
-#May
+#May calculations of above stats and trends from fucntions written above
 eviintmay= calc(evimay, lm_fun_int)
 evipmay= calc(evimay, lm_fun_p)
 evip.sig.may<-evip
@@ -134,6 +123,9 @@ levelplot(scale(evislopeadjmay), par.settings=cols2)
 
 levelplot(evitrend, contours=T, pretty=T)
 extent(evislopeadj)
+
+#plotting excercises
+library(OpenStreetMap)
 map <- openmap (c( 45.587077, -122.551729), c( 41.989833, -121.104984),type='esri-topo')#provides the map boundary using upper-left and lower-right corners
 plot(map)
 map_utm <- openproj(map, projection =crs(evislopeadj))
@@ -147,23 +139,10 @@ evitrend[evitrend>0.02]<-NA
 evitrend[evitrend<(-0.02)]<-NA
 levelplot(evitrend, par.settings= cols)
 
-plot(eviOR[[1]], colNA="lightblue", main = "EVI March, 2018")
+plot(evimay[[1]], colNA="lightblue", main = "EVI March, 2018")
 plot(orutm, add=T)
-plot(diffstackOR[[1]], colNA="lightblue", main = "EVI March, 2018-March 2000")
 plotstack<-stack(scale(evimay[[1]]), scale(evislopeadjmay))
 names(plotstack)<-c("EVI May 2017", "EVI Trend\n ∆EVI/Year")
 levelplot(plotstack, par.settings=cols2, pretty=T, layout=c(2,1))
-par(mfrow =c(1,3))
-plot(eviOR[[1]])
-plot(diffstackOR[[1]])
 
-
-raster::plot(map_utm)
-plot(eviOR[[1]], add=T, alpha=0.7)
-writeRaster(evislopeadj, "evislopeadj.tif")
-
-par(mfrow=c(2,1)
-plot(evislopeadj)
-plot(evislopeadjmay)
-
-test
+writeRaster(evislopeadj, "evislopeadj.tif") #write product to desktop
